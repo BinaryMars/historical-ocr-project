@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古籍OCR文本比对系统</title>
+    <script src="https://unpkg.com/drift-zoom/dist/Drift.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #eff3ff;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #202e9f;
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .upload-area {
+            border: 2px dashed #202e9f;
+            padding: 2rem;
+            text-align: center;
+            background-color: white;
+            transition: all 0.3s;
+            border-radius: 5px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 40px;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #202e9f;
+            background-color: rgba(32, 46, 159, 0.08);
+        }
+        .btn-primary {
+            background-color: #202e9f;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            font-size: 14px;
+        }
+        .btn-primary:hover {
+            background-color: #f56f4f;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background-color: #c3c7ee;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            background-color: #eff3ff;
+            font-size: 14px;
+        }
+        .toolbar-btn:hover {
+            background-color: #202e9f;
+            color: white;
+        }
+        .toolbar-btn.active {
+            background-color: #202e9f;
+            color: white;
+        }
+        .toolbar-btn-icon {
+            width: 16px;
+            height: 16px;
+        }
+        .image-switch-toolbar {
+            padding: 10px;
+            background-color: #eff3ff;
+            display: flex;
+            gap: 10px;
+        }
+        .image-switch-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            background-color: #fff;
+            font-size: 14px;
+        }
+        .image-switch-btn:hover {
+            background-color: #202e9f;
+            color: white;
+        }
+        .image-switch-btn.active {
+            background-color: #202e9f;
+            color: white;
+        }
+        .comparison-container {
+            display: flex;
+            width: 100%;
+            gap: 10px;
+            height: calc(100vh - 120px);
+            overflow: hidden;
+        }
+        .comparison-item:nth-child(1) {
+            flex: 0 0 30%;
+            background-color: white;
+            border-radius: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100%;
+        }
+        .comparison-item:nth-child(2) {
+            flex: 0 0 55%;
+            background-color: white;
+            border-radius: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .comparison-content {
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .column-container {
+            display: flex;
+            flex-direction: row-reverse;
+            flex-wrap: nowrap;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: visible;
+            padding-bottom: 10px;
+            transform: rotate(180deg);
+        }
+        .column-item {
+            flex: 0 0 auto;
+            max-width: 100px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            padding: 5px;
+            position: relative;
+            transform: rotate(180deg);
+        }
+        .column-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .column-container::-webkit-scrollbar-thumb {
+            background-color: #202e9f;
+            border-radius: 4px;
+        }
+        .column-container::-webkit-scrollbar-track {
+            background-color: #d4d8ff;
+        }
+        .comparison-item:nth-child(3) {
+            flex: 0 0 15%;
+            min-width: 150px;
+            background-color: white;
+            border-radius: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100%;
+        }
+        .comparison-header {
+            background-color: #202e9f;
+            color: white;
+            padding: 10px 15px;
+        }
+        .comparison-content {
+            padding: 10px;
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        .char-box {
+            position: relative;
+            border: 2px solid #202e9f;
+            margin: 5px;
+            padding: 2px;
+            width: 50px;
+            height: 50px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .char-box.highlighted {
+            border-color: #20ce8c !important;
+            padding: 2px;
+            background-color: rgba(245, 111, 79, 0.1) !important;
+        }
+        .char-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .char-number {
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-size: 10px;
+            color: #202e9f;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 1px 3px;
+        }
+        .char-box.low-confidence {
+            border-color: #f56f4f;
+            border-width: 2px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { border-color: #f56f4f; }
+            50% { border-color: #fbb3a3; }
+            100% { border-color: #f56f4f; }
+        }
+        .loading {
+            flex: 1;
+            text-align: center;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #f56f4f;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-panel .comparison-content {
+            padding: 15px;
+            white-space: nowrap;
+        }
+        .info-panel h3 {
+            margin: 0;
+            color: #202e9f;
+            border-bottom: none;
+        }
+        .info-panel p {
+            margin: 8px 0;
+            white-space: nowrap;
+        }
+        .info-panel strong {
+            color: #202e9f;
+        }
+        .topk-predictions {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            max-height: 200px;
+        }
+        .topk-item {
+            padding: 5px;
+            border-bottom: 1px dashed #ccc;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+        .topk-item:hover {
+            background-color: #f56f4f;
+        }
+        .topk-item.selected {
+            background-color: #202e9f;
+            color: white;
+        }
+        .topk-item:last-child {
+            border-bottom: none;
+        }
+        .edit-input {
+            padding: 3px;
+            margin-top: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: 'HanaMinB', 'Microsoft YaHei', sans-serif;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+        }
+        .edit-input:focus {
+            outline: none;
+            border-color: #202e9f;
+            background-color: white;
+        }
+        #uploadSection {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+        }
+        #loadingSection {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: none;
+        }
+        #resultSection {
+            flex: 1;
+            display: none;
+        }
+        .edit-mode-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #202e9f;
+            padding: 3px;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .char-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 2px 0;
+            font-size: 14px;
+        }
+        .drift-zoom-pane {
+            width: 150px !important;
+            height: 150px !important;
+            border: 2px solid #202e9f;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            position: absolute;
+        }
+        .drift-zoom-pane.drift-open {
+            display: block !important;
+        }
+        @font-face {
+            font-family: 'HanaMinB';
+            src: url('/static/fonts/HanaMinB.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        .char-text, #predictedChar, #topkPredictions {
+            font-family: 'HanaMinB', 'Microsoft YaHei', sans-serif;
+        }
+        .char-box.editing {
+            background-color: #d4d8ff;
+            border-color: #f56f4f;
+            box-shadow: 0 0 7px rgba(245, 111, 79, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 style="margin: 0; font-size: 20px;">古籍OCR文本比对系统</h1>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">上传古籍图片，自动识别文字并进行比对</p>
+        </header>
+
+        <div id="toolbar" class="toolbar" style="display: none;">
+            <label for="fileInput" class="toolbar-btn">
+                <svg class="toolbar-btn-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                上传图片
+            </label>
+            <input id="fileInput" type="file" style="display: none;" accept=".png,.jpg,.jpeg">
+            
+            <button id="downloadBtn" class="toolbar-btn">
+                <svg class="toolbar-btn-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                下载结果
+            </button>
+        </div>
+
+        <div id="uploadSection">
+            <div id="uploadArea" class="upload-area">
+                <svg style="margin: 0 auto; display: block;" width="48" height="48" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#aaa">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <h3 style="margin-top: 15px; font-size: 16px; color: #333;">拖拽图片到此处或点击上传</h3>
+                <p style="margin-top: 5px; font-size: 14px; color: #666;">支持 PNG, JPG, JPEG 格式</p>
+                <input id="initialFileInput" type="file" style="display: none;" accept=".png,.jpg,.jpeg">
+                <button id="browseBtn" class="btn-primary" style="margin-top: 15px;">浏览文件</button>
+            </div>
+        </div>
+
+        <div id="loadingSection" class="loading">
+            <div class="loading-spinner"></div>
+            <p>正在处理图片，请稍候...</p>
+        </div>
+
+        <div id="resultSection">
+            <div class="comparison-container">
+                <div class="comparison-item">
+                    <div class="comparison-header">
+                        <h3 style="margin: 0; font-size: 16px;">原始图像</h3>
+                    </div>
+                    <div class="image-switch-toolbar">
+                        <button class="toolbar-btn image-switch-btn" data-type="original">原始图像</button>
+                        <button class="toolbar-btn image-switch-btn" data-type="binary">二值化图</button>
+                        <button class="toolbar-btn image-switch-btn" data-type="refined">字符检测</button>
+                        <button class="toolbar-btn image-switch-btn active" data-type="sorted">排序结果</button>
+                    </div>
+                    <div class="comparison-content">
+                        <img id="originalImage" src="/static/icons/placeholder.svg" data-zoom="/static/icons/placeholder.svg" alt="原始图像" style="max-width: 100%; display: block;">
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-header">
+                        <h3 style="margin: 0; font-size: 16px;">识别结果</h3>
+                    </div>
+                    <div class="comparison-content">
+                        <div id="columnsContainer" class="column-container"></div>
+                    </div>
+                </div>
+                <div id="infoPanel" class="comparison-item info-panel">
+                    <div class="comparison-header">
+                        <h3 style="margin: 0; font-size: 16px;">字符信息</h3>
+                    </div>
+                    <div class="comparison-content">
+                        <p><strong>识别字符：</strong><span id="predictedChar">N/A</span></p>
+                        <p><strong>字符序号：</strong><span id="charOrder">N/A</span></p>
+                        <p><strong>TopK 预测结果：</strong></p>
+                        <div id="topkPredictions" class="topk-predictions">N/A</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const initialFileInput = document.getElementById('initialFileInput');
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const uploadArea = document.getElementById('uploadArea');
+            const uploadSection = document.getElementById('uploadSection');
+            const loadingSection = document.getElementById('loadingSection');
+            const resultSection = document.getElementById('resultSection');
+            const toolbar = document.getElementById('toolbar');
+            const originalImage = document.getElementById('originalImage');
+            const columnsContainer = document.getElementById('columnsContainer');
+            const predictedCharElement = document.getElementById('predictedChar');
+            const charOrderElement = document.getElementById('charOrder');
+            const topkPredictionsElement = document.getElementById('topkPredictions');
+
+            let ocrData = null;
+            let columnData = [];
+            let charElements = [];
+            let currentSelectedChar = null;
+            let editedChars = {};
+            let baseName = '';
+            let originalName = '';
+            let currentImageType = 'sorted';
+
+            // 初始化 Drift
+            const drift = new Drift(originalImage, {
+                paneContainer: document.querySelector('.comparison-item:nth-child(1) .comparison-content'),
+                inlinePane: false
+            });
+
+            originalImage.addEventListener('mousemove', function(e) {
+                const rect = originalImage.getBoundingClientRect();
+                const pane = document.querySelector('.drift-zoom-pane');
+                if (!pane || !pane.classList.contains('drift-open')) return;
+
+                const mouseX = e.clientX - rect.left;
+                const imgWidth = rect.width;
+                const paneWidth = 150;
+
+                let paneX = (mouseX >= imgWidth / 2) ? 0 : (imgWidth - paneWidth);
+                pane.style.left = `${paneX}px`;
+                pane.style.top = `0px`;
+                pane.style.position = 'absolute';
+            });
+
+            browseBtn.addEventListener('click', function() {
+                initialFileInput.click();
+            });
+
+            initialFileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    handleFileUpload(this.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    handleFileUpload(this.files[0]);
+                }
+            });
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function() {
+                this.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                }
+            });
+
+            downloadBtn.addEventListener('click', function() {
+                downloadText();
+            });
+
+            function handleFileUpload(file) {
+                uploadSection.style.display = 'none';
+                loadingSection.style.display = 'flex';
+                resultSection.style.display = 'none';
+                toolbar.style.display = 'none';
+                originalName = file.name;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload', { method: 'POST', body: formData })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        loadingSection.style.display = 'none';
+                        resultSection.style.display = 'flex';
+                        toolbar.style.display = 'flex';
+
+                        ocrData = data;
+                        baseName = data.base_name;
+                        columnData = [];
+                        charElements = [];
+                        editedChars = {};
+
+                        const sortedImagePath = '/results/' + data.original_image_path;
+                        originalImage.src = sortedImagePath;
+                        originalImage.setAttribute('data-zoom', sortedImagePath);
+                        originalImage.onerror = function() {
+                            const fallbackPath = '/' + data.original_image_path;
+                            originalImage.src = fallbackPath;
+                            originalImage.setAttribute('data-zoom', fallbackPath);
+                        };
+
+                        columnsContainer.innerHTML = '';
+
+                        data.columns.forEach((column, columnIndex) => {
+                            const columnDiv = document.createElement('div');
+                            columnDiv.className = 'column-item';
+                            const columnContent = document.createElement('div');
+                            columnContent.className = 'column-content';
+                            const columnChars = [];
+
+                            column.chars.forEach((char, charIndex) => {
+                                const charBox = document.createElement('div');
+                                charBox.className = 'char-box';
+
+                                const confidence = char.top_k_predictions[0][1];
+                                if (confidence < 0.80) {
+                                    charBox.classList.add('low-confidence');
+                                }
+
+                                charBox.dataset.columnIndex = columnIndex;
+                                charBox.dataset.charIndex = charIndex;
+
+                                const charImg = document.createElement('img');
+                                const charImgPath = '/results/' + char.image_path;
+                                charImg.src = charImgPath;
+                                charImg.alt = char.text || '?';
+
+                                const charNumber = document.createElement('span');
+                                charNumber.className = 'char-number';
+                                charNumber.textContent = char.order !== undefined ? char.order : charIndex + 1;
+
+                                const charText = document.createElement('div');
+                                charText.className = 'char-text';
+                                charText.textContent = char.text || '?';
+
+                                columnChars.push({
+                                    element: charBox,
+                                    data: char,
+                                    text: char.text || '?'
+                                });
+                                charElements.push({
+                                    element: charBox,
+                                    columnIndex: columnIndex,
+                                    charIndex: charIndex,
+                                    data: char
+                                });
+
+                                charBox.addEventListener('mouseover', function() {
+                                    if (!currentSelectedChar && !this.classList.contains('editing')) {
+                                        highlightChar(columnIndex, charIndex);
+                                        showCharInfo(char, columnIndex, charIndex);
+                                    }
+                                });
+
+                                charBox.addEventListener('mouseout', function() {
+                                    if (!currentSelectedChar && !this.classList.contains('editing')) {
+                                        clearHighlight();
+                                        clearCharInfo();
+                                    }
+                                });
+
+                                charBox.addEventListener('click', function() {
+                                    if (currentSelectedChar === this) {
+                                        exitEditMode();
+                                    } else {
+                                        enterEditMode(this, columnIndex, charIndex);
+                                    }
+                                });
+
+                                charBox.appendChild(charImg);
+                                charBox.appendChild(charNumber);
+                                charBox.appendChild(charText);
+                                columnContent.appendChild(charBox);
+                            });
+
+                            columnData.push(columnChars);
+                            columnDiv.appendChild(columnContent);
+                            columnsContainer.appendChild(columnDiv);
+                        });
+
+                        const images = document.querySelectorAll('.char-box img');
+                        let loadedCount = 0;
+                        images.forEach(img => {
+                            img.onload = () => {
+                                loadedCount++;
+                                if (loadedCount === images.length) {
+                                    triggerCleanup(data.base_name);
+                                }
+                            };
+                            img.onerror = () => {
+                                loadedCount++;
+                                if (loadedCount === images.length) {
+                                    triggerCleanup(data.base_name);
+                                }
+                            };
+                        });
+
+                        initImageSwitchButtons();
+                    })
+                    .catch(error => {
+                        console.error('上传处理错误:', error);
+                        loadingSection.style.display = 'none';
+                        uploadSection.style.display = 'flex';
+                        alert('上传失败: ' + error.message);
+                    });
+            }
+
+            function triggerCleanup(baseName) {
+                fetch('/cleanup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base_name: baseName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                })
+                .catch(error => {
+                    console.error('清理失败:', error);
+                });
+            }
+
+            function initImageSwitchButtons() {
+                const switchButtons = document.querySelectorAll('.image-switch-btn');
+                switchButtons.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        switchButtons.forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+
+                        const imageType = this.dataset.type;
+                        currentImageType = imageType;
+                        updateImageDisplay(imageType);
+                    });
+                });
+            }
+
+            function updateImageDisplay(imageType) {
+                let imagePath = '';
+                switch (imageType) {
+                    case 'original':
+                        imagePath = `/static/uploads/${originalName}`; // 原始图像路径
+                        break;
+                    case 'binary':
+                        imagePath = `/results/0.${baseName}_binary.png`;
+                        break;
+                    case 'refined':
+                        imagePath = `/results/2.${baseName}_refinedBboxes.png`;
+                        break;
+                    case 'sorted':
+                        imagePath = `/results/3.${baseName}_sortedBboxes.png`;
+                        break;
+                    default:
+                        imagePath = `/results/3.${baseName}_sortedBboxes.png`;
+                }
+
+                originalImage.src = imagePath;
+                originalImage.setAttribute('data-zoom', imagePath);
+                originalImage.onerror = function() {
+                    console.error(`无法加载图像: ${imagePath}`);
+                    originalImage.src = '/static/icons/placeholder.svg';
+                    originalImage.setAttribute('data-zoom', '/static/icons/placeholder.svg');
+                };
+            }
+
+            function highlightChar(columnIndex, charIndex) {
+                clearHighlight();
+                if (columnData[columnIndex] && columnData[columnIndex][charIndex]) {
+                    const charElement = columnData[columnIndex][charIndex].element;
+                    charElement.classList.add('highlighted');
+                }
+            }
+
+            function clearHighlight() {
+                charElements.forEach(item => {
+                    item.element.classList.remove('highlighted');
+                });
+            }
+
+            function showCharInfo(char, columnIndex, charIndex) {
+                const displayText = editedChars[`${columnIndex}-${charIndex}`] || char.text || '?';
+                predictedCharElement.textContent = displayText;
+                charOrderElement.textContent = char.order !== undefined ? char.order : charIndex + 1;
+
+                if (char.top_k_predictions && char.top_k_predictions.length > 0) {
+                    let topkHtml = '';
+                    char.top_k_predictions.forEach((pred, index) => {
+                        const isSelected = pred[0] === displayText;
+                        topkHtml += `<div class="topk-item ${isSelected ? 'selected' : ''}" data-char="${pred[0]}" data-column="${columnIndex}" data-index="${charIndex}">
+                            ${index + 1}. ${pred[0]}: ${pred[1].toFixed(6)}
+                        </div>`;
+                    });
+                    topkPredictionsElement.innerHTML = topkHtml;
+
+                    const topkItems = topkPredictionsElement.querySelectorAll('.topk-item');
+                    topkItems.forEach(item => {
+                        item.addEventListener('click', function() {
+                            if (!currentSelectedChar) return;
+
+                            const newChar = this.dataset.char;
+                            const colIndex = parseInt(this.dataset.column);
+                            const charIdx = parseInt(this.dataset.index);
+
+                            updateChar(colIndex, charIdx, newChar);
+
+                            topkItems.forEach(i => i.classList.remove('selected'));
+                            this.classList.add('selected');
+
+                            const input = document.querySelector('.edit-input');
+                            if (input) {
+                                input.value = newChar;
+                            }
+                        });
+                    });
+                } else {
+                    topkPredictionsElement.innerHTML = '<div class="topk-item">无可用预测</div>';
+                }
+            }
+
+            function clearCharInfo() {
+                predictedCharElement.textContent = 'N/A';
+                charOrderElement.textContent = 'N/A';
+                topkPredictionsElement.innerHTML = 'N/A';
+            }
+
+            function enterEditMode(charElement, columnIndex, charIndex) {
+                exitEditMode();
+
+                currentSelectedChar = charElement;
+                charElement.classList.add('highlighted');
+                charElement.classList.add('editing');
+
+                if (charElement.classList.contains('low-confidence')) {
+                    charElement.classList.remove('low-confidence');
+                    charElement.style.borderColor = '#202e9f';
+                    charElement.style.borderWidth = '2px';
+                    charElement.style.animation = 'none';
+                }
+
+                const editIndicator = document.createElement('div');
+                editIndicator.className = 'edit-mode-indicator';
+                editIndicator.textContent = '✎';
+                charElement.appendChild(editIndicator);
+
+                const char = ocrData.columns[columnIndex].chars[charIndex];
+                showCharInfo(char, columnIndex, charIndex);
+
+                const infoContent = document.querySelector('#infoPanel .comparison-content');
+                const inputContainer = document.createElement('div');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'edit-input';
+                input.maxLength = 1;
+                input.placeholder = '找不到可手动输入';
+
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        updateChar(columnIndex, charIndex, this.value);
+                        this.blur();
+                    }
+                });
+                input.addEventListener('blur', function() {
+                    updateChar(columnIndex, charIndex, this.value);
+                });
+
+                inputContainer.appendChild(input);
+                infoContent.appendChild(inputContainer);
+            }
+
+            function exitEditMode() {
+                if (currentSelectedChar) {
+                    currentSelectedChar.classList.remove('highlighted');
+                    currentSelectedChar.classList.remove('editing');
+                    const indicator = currentSelectedChar.querySelector('.edit-mode-indicator');
+                    if (indicator) {
+                        indicator.remove();
+                    }
+                    const inputContainer = document.querySelector('#infoPanel .comparison-content > div:last-child');
+                    if (inputContainer && inputContainer.querySelector('.edit-input')) {
+                        inputContainer.remove();
+                    }
+                    currentSelectedChar = null;
+                    clearCharInfo();
+                }
+            }
+
+            function updateChar(columnIndex, charIndex, newChar) {
+                if (newChar) {
+                    editedChars[`${columnIndex}-${charIndex}`] = newChar;
+
+                    if (columnData[columnIndex] && columnData[columnIndex][charIndex]) {
+                        const charElement = columnData[columnIndex][charIndex].element;
+                        const charText = charElement.querySelector('.char-text');
+                        if (charText) {
+                            charText.textContent = newChar;
+                        }
+                        predictedCharElement.textContent = newChar;
+
+                        const topkItems = topkPredictionsElement.querySelectorAll('.topk-item');
+                        topkItems.forEach(item => {
+                            item.classList.toggle('selected', item.dataset.char === newChar);
+                        });
+                    }
+                }
+            }
+
+            function downloadText() {
+                if (!columnData || columnData.length === 0) {
+                    alert('没有识别结果可下载！');
+                    return;
+                }
+
+                let textContent = '';
+                for (let col = columnData.length - 1; col >= 0; col--) {
+                    const columnChars = columnData[col];
+                    let rowText = '';
+                    columnChars.forEach((charObj, idx) => {
+                        const key = `${col}-${idx}`;
+                        const charText = editedChars[key] || charObj.text;
+                        rowText += charText + ' ';
+                    });
+                    if (rowText.trim()) {
+                        textContent += rowText.trim() + '\n';
+                    }
+                }
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/download';
+                form.style.display = 'none';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'text';
+                input.value = textContent;
+                form.appendChild(input);
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
