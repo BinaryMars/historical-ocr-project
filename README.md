@@ -1,5 +1,7 @@
 # 历史文档OCR项目
 
+![project_demo](img/project_demo.gif)
+
 本项目提供了一个端到端的解决方案，用于历史文档的光学字符识别（OCR）。它基于 Python 和 Flask 开发，集成了深度学习技术，包括 HRCenterNet 用于字符分割，以及基于 CNN 的字符识别系统，并通过 BERT 优化提升准确性。系统能够处理图像、提取文本，并提供一个便于交互的网页界面。
 
 ## 功能
@@ -9,6 +11,8 @@
 - **字符识别**：采用 CNN 模型预测字符，并提供前 K 个预测结果。
 - **BERT 优化**：利用 BERT 的上下文分析优化 OCR 结果。
 - **网页界面**：基于 Flask 的前端，支持上传图像、查看结果和下载识别文本。
+
+![process_example](img/process_example.png)
 
 ## 安装
 
