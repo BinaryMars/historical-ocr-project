@@ -41,7 +41,7 @@ pip install -r requirements.txt
 将 HRCenterNet 权重文件（[`HRCenterNet.pth.tar`](https://drive.google.com/file/d/1noPhjYcV09fTSPZHPjXAHzJ2gtwa57Wu/view?usp=share_link)）放入 `models/hrcenternet/`。
 将 CNN 权重文件（[`best.weights.h5`](https://drive.google.com/file/d/1tTMdS7svNjS1huOh_21epi6bcbCHQF7y/view?usp=share_link)）和字符字典（[`w2i.json`](https://drive.google.com/file/d/1c7kiyZbjQ_AQdtmYxLQ6huX03drLRX8M/view?usp=share_link)）放入 `models/cnn/`。
 
-5. **运行应用**：
+5. **运行应用**（初次运行需要一些时间）：
 
 ```bash
 python app.py
